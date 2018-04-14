@@ -1,8 +1,8 @@
 function _test() {
   // monthは1月=0...12月=11
-  var from = new Date(2016, 5, 28);
-  var to = new Date(2016, 5, 29);
-  var ret = calcWorkRate('岩田俊朗', from, to, 3);
+  var from = new Date(2018, 3, 2);
+  var to = new Date(2018, 3, 9);
+  var ret = calcWorkRate('吉澤瑞恵', from, to, 2, 5, 8);
   Logger.log(ret);
 }
 
@@ -20,10 +20,8 @@ var COL_NAME = 5;
 var COL_HOUR = 7;
 var ROW_DATA_START = 2;
 
-var WORKDAYS_OF_A_WEEK = 5;
-var HOURS_OF_A_DAY = 8;
-var HOURS_OF_A_WEEK = HOURS_OF_A_DAY * WORKDAYS_OF_A_WEEK;
-var HOURS_OF_A_WEEK_JITAN6 = (HOURS_OF_A_DAY - 2) * WORKDAYS_OF_A_WEEK;
+var WORKDAYS_OF_A_WEEK_DEFAULT = 5;
+var HOURS_OF_A_DAY_DEFAULT = 8;
 
 var CALC_TYPE_ACTRATE = 1;
 var CALC_TYPE_INPUTRATE = 2;
@@ -33,7 +31,15 @@ var CALC_TYPE_ACTSEIBAN = 3;
 var RANDD_GENERAL_SEIBAN = ['TD16A002', 'TD16A006', 'TD16G002', 'TD16G005', 'TD17A002', 'TD17A005', 'TD17G002', 'TD17G005', 'TD18A002', 'TD18A005'];
   
 // from <= 日付 < to とする 
-function calcWorkRate(name, from, to, calctype, workdays) {
+function calcWorkRate(name, from, to, calctype, workdays, workhours) {
+  
+  // オプション引数の初期値の設定
+  if (workdays == null) {
+    workdays = WORKDAYS_OF_A_WEEK_DEFAULT;
+  }
+  if (workhours == null) {
+    workhours = HOURS_OF_A_DAY_DEFAULT;
+  }
   
   // 役務算出シートのデータが入力されている範囲の全データを取得
   var sheet = SpreadsheetApp.getActive().getSheetByName('役務算出');
@@ -73,10 +79,7 @@ function calcWorkRate(name, from, to, calctype, workdays) {
   }
   
   // 長期休暇や祝日等で週の稼働日が5日に満たない場合の稼動率や入力率を100%にするための係数
-  var coefficient = 1;
-  if (workdays != null) {
-    coefficient = workdays / WORKDAYS_OF_A_WEEK;
-  }
+  var coefficient = workdays / WORKDAYS_OF_A_WEEK_DEFAULT;
 
   if (calctype == CALC_TYPE_ACTSEIBAN) {
     // 末尾の改行を削除
@@ -85,13 +88,8 @@ function calcWorkRate(name, from, to, calctype, workdays) {
     return seibans;
   } else {
     // 百分率を計算して返す（1週間単位固定とする）
-    var rete = 0;
-    if (name == "吉澤瑞恵") {
-      // 吉澤さんは1日6時間の時短勤務
-      rete = sum_hour / HOURS_OF_A_WEEK_JITAN6 / coefficient;
-    } else {
-      rete = sum_hour / HOURS_OF_A_WEEK / coefficient;
-    }
+    var hoursofaweek = workhours * WORKDAYS_OF_A_WEEK_DEFAULT;
+    var rete = sum_hour / hoursofaweek / coefficient;
     return rete;
   }
 }
