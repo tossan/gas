@@ -26,6 +26,7 @@ var HOURS_OF_A_DAY_DEFAULT = 8;
 var CALC_TYPE_ACTRATE = 1;
 var CALC_TYPE_INPUTRATE = 2;
 var CALC_TYPE_ACTSEIBAN = 3;
+var CALC_TYPE_SEIBAN_TOTAL = 4;
 
 // 研究/開発/教育製番及び汎用製番
 var RANDD_GENERAL_SEIBAN = ['TD16A002', 'TD16A006', 'TD16G002', 'TD16G005', 'TD17A002', 'TD17A005', 'TD17G002', 'TD17G005', 'TD18A002', 'TD18A005', 'TD18G002', 'TD18G005', 'TD19A002', 'TD19A005', 'TD19G002', 'TD19G005', 'TD20A002', 'TD20A005'];
@@ -58,9 +59,12 @@ function calcWorkRate(name, from, to, calctype, workdays, workhours) {
     if (to <= data[i][COL_DATE]) {
       break;
     }
-    // 対象者でなければループの最初に戻って次の行へ
-    if (data[i][COL_NAME] != name) {
-      continue;
+    // 製番実績集計を得たいのではなく
+    if (calctype != CALC_TYPE_SEIBAN_TOTAL) {
+      // 対象者でなければループの最初に戻って次の行へ
+      if (data[i][COL_NAME] != name) {
+        continue;
+      }
     }
     
     // calctypeによって作業時間の合計を得る
@@ -73,6 +77,9 @@ function calcWorkRate(name, from, to, calctype, workdays, workhours) {
     } else if (calctype == CALC_TYPE_ACTSEIBAN) {
       // 実績製番リストを得たい場合は重複無しの製番リストを編集
       seibans = getActSeiban(data[i][COL_SEIBAN], seibans, data[i][COL_HOUR]);
+    } else if (calctype == CALC_TYPE_SEIBAN_TOTAL) {
+      // 製番毎の実績時間を得たい場合は対象製番の時間を加算（この計算タイプの場合、nameには製番が入っている）
+      sum_hour += getTargetSeibanHour(name, data[i][COL_SEIBAN], data[i][COL_HOUR]);
     } else {
       // undefined (Do nothing)
     }
@@ -86,6 +93,9 @@ function calcWorkRate(name, from, to, calctype, workdays, workhours) {
     seibans = seibans.replace(/\n+$/g,'');
     // 実績製番リストを返す
     return seibans;
+  } else if (calctype == CALC_TYPE_SEIBAN_TOTAL) {
+    // 対象製番の合計時間を返す
+    return sum_hour;
   } else {
     // 百分率を計算して返す（1週間単位固定とする）
     var hoursofaweek = workhours * WORKDAYS_OF_A_WEEK_DEFAULT;
@@ -132,4 +142,15 @@ function getActSeiban(seiban, seibans, hour) {
     }
   }
   return seibans;
+}
+
+function getTargetSeibanHour(target_seiban, seiban, hour) {
+  
+  if (seiban != "") {
+    if (target_seiban == seiban) {
+      // 対象製番と一致した製番の時間を返す
+      return hour;
+    }
+  }
+  return 0;
 }
