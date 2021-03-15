@@ -1,3 +1,10 @@
+function _reCalc() {
+  const sheet = SpreadsheetApp.getActiveSheet();
+  var s = sheet.getRange(11, 3).getValue();
+  sheet.getRange(11, 3).setValue("dummy");
+  sheet.getRange(11, 3).setValue(s);
+}
+
 function _test() {
   // monthは1月=0...12月=11
   var from = new Date(2018, 3, 2);
@@ -29,7 +36,7 @@ var CALC_TYPE_ACTSEIBAN = 3;
 var CALC_TYPE_SEIBAN_TOTAL = 4;
 
 // 研究/開発/教育製番及び汎用製番
-var RANDD_GENERAL_SEIBAN = ['TD16A002', 'TD16A006', 'TD16G002', 'TD16G005', 'TD17A002', 'TD17A005', 'TD17G002', 'TD17G005', 'TD18A002', 'TD18A005', 'TD18G002', 'TD18G005', 'TD19A002', 'TD19A005', 'TD19G002', 'TD19G005', 'TD20A002', 'TD20A005', 'TD20G002', 'TD20G005'];
+var RANDD_GENERAL_SEIBAN = ['TD16A002', 'TD16A006', 'TD16G002', 'TD16G005', 'TD17A002', 'TD17A005', 'TD17G002', 'TD17G005', 'TD18A002', 'TD18A005', 'TD18G002', 'TD18G005', 'TD19A002', 'TD19A005', 'TD19G002', 'TD19G005', 'TD20A002', 'TD20A005', 'TD20G002', 'TD20G005', 'TD21A002', 'TD21A005'];
   
 // from <= 日付 < to とする 
 function calcWorkRate(name, from, to, calctype, workdays, workhours) {
