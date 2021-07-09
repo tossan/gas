@@ -1,3 +1,14 @@
+function onOpen() {
+  var ui = SpreadsheetApp.getUi();
+  var menu = ui.createMenu('ITDC');
+  menu.addItem('役務算出集計', 'execCalc');
+  menu.addToUi();
+}
+ 
+function execCalc() {
+  Browser.msgBox(SpreadsheetApp.getActiveSpreadsheet().getSheetName());
+}
+
 function _reCalc() {
   const sheet = SpreadsheetApp.getActiveSheet();
   var s = sheet.getRange(11, 3).getValue();
@@ -36,7 +47,7 @@ var CALC_TYPE_ACTSEIBAN = 3;
 var CALC_TYPE_SEIBAN_TOTAL = 4;
 
 // 研究/開発/教育製番及び汎用製番
-var RANDD_GENERAL_SEIBAN = ['TD16A002', 'TD16A006', 'TD16G002', 'TD16G005', 'TD17A002', 'TD17A005', 'TD17G002', 'TD17G005', 'TD18A002', 'TD18A005', 'TD18G002', 'TD18G005', 'TD19A002', 'TD19A005', 'TD19G002', 'TD19G005', 'TD20A002', 'TD20A005', 'TD20G002', 'TD20G005', 'TD21A002', 'TD21A005'];
+var RANDD_GENERAL_SEIBAN = ['TD16A002', 'TD16A006', 'TD16G002', 'TD16G005', 'TD17A002', 'TD17A005', 'TD17G002', 'TD17G005', 'TD18A002', 'TD18A005', 'TD18G002', 'TD18G005', 'TD19A002', 'TD19A005', 'TD19G002', 'TD19G005', 'TD20A002', 'TD20A005', 'TD20G002', 'TD20G005', 'TD21A002', 'TD21A005', 'TD21G002', 'TD21G005'];
   
 // from <= 日付 < to とする 
 function calcWorkRate(name, from, to, calctype, workdays, workhours) {
@@ -48,7 +59,12 @@ function calcWorkRate(name, from, to, calctype, workdays, workhours) {
   if (workhours == null) {
     workhours = HOURS_OF_A_DAY_DEFAULT;
   }
-  
+
+  // 実稼働日数が0の場合は稼働率の計算ができない（ゼロ割となり無限大に発散する）ので0を返す
+  if (workdays == 0) {
+    return 0;
+  }
+
   // 役務算出シートのデータが入力されている範囲の全データを取得
   var sheet = SpreadsheetApp.getActive().getSheetByName('役務算出');
   var data = sheet.getDataRange().getValues();
