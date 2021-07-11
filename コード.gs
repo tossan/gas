@@ -4,9 +4,164 @@ function onOpen() {
   menu.addItem('役務算出集計', 'execCalc');
   menu.addToUi();
 }
- 
+
+let SHEET_TYPE_PROJECT = 1;
+let SHEET_TYPE_MEMBER = 2;
+let SHEET_TYPE_UNDEF = -1;
+
+let IDX_KEYWORD = 2;
+let COL_PROJECT_SEIBAN = 3;
+let COL_DATE_START = 5;
+
 function execCalc() {
-  Browser.msgBox(SpreadsheetApp.getActiveSpreadsheet().getSheetName());
+  // ITDC->役務算出集計コマンドが実行されたシートを判定
+  let sheet_type = getSheetType(SpreadsheetApp.getActiveSheet().getSheetName())
+  if (sheet_type == SHEET_TYPE_UNDEF) {
+    Browser.msgBox("プロジェクトシートかメンバーシートを選択してから実行してください。");
+    return;
+  }
+  // 役務算出シートのデータが入力されている範囲の全データを取得
+  let ekimuSheet = SpreadsheetApp.getActive().getSheetByName('役務算出');
+  let ekimuData = ekimuSheet.getDataRange().getValues();
+  let activeSheet = SpreadsheetApp.getActiveSheet();
+  let rowKeyword = getKeywordRowBySheetType(sheet_type, activeSheet);
+  for (let cntRow = 1; cntRow < activeSheet.getLastRow(); cntRow++) {
+    let seiban = activeSheet.getRange(cntRow, COL_PROJECT_SEIBAN).getValue();
+    if (isSeibanString(seiban)) {
+      for (let cntCol = COL_DATE_START; activeSheet.getLastColumn(); cntCol++) {
+        let rowDate = rowKeyword;
+        let dateFrom = activeSheet.getRange(rowDate, cntCol).getValue();
+        let dateTo = activeSheet.getRange(rowDate, cntCol + 1).getValue();
+        if (dateTo.toString().trim().length <= 0) {
+          break;
+        }
+        let value = calcWorkRate2(seiban, dateFrom, dateTo, CALC_TYPE_SEIBAN_TOTAL, ekimuData);
+        value = isNumber(value) ? value : 0;
+        activeSheet.getRange(cntRow, cntCol).setValue(value);
+      }
+      SpreadsheetApp.getActiveSpreadsheet().toast(cntRow + "行目 " + seiban + " 集計済", "進捗表示", 1);
+    }
+  }
+  SpreadsheetApp.getActiveSpreadsheet().toast("集計完了", "進捗表示", 1);
+}
+
+function getSheetType(sheetName) {
+  let sheet = SpreadsheetApp.getActive().getSheetByName(sheetName);
+  let data = sheet.getDataRange().getValues();
+  for (var i = 0; i < data.length; i++) {
+    let keyword = data[i][IDX_KEYWORD];
+    if (keyword == '案件名') {
+      return SHEET_TYPE_PROJECT;
+    } else if (keyword == '実稼働日数') {
+      return SHEET_TYPE_MEMBER;
+    }
+  }
+  return SHEET_TYPE_UNDEF;
+}
+
+function getKeywordRowBySheetType(sheetType, activeSheet) {
+  for (let i = 1; i <= activeSheet.getLastRow(); i++) {
+    let keyword = activeSheet.getRange(i, COL_PROJECT_SEIBAN).getValue();
+    if (sheetType == SHEET_TYPE_PROJECT) {
+      if (keyword == '案件名') {
+        return i;
+      }
+    } else if (sheetType == SHEET_TYPE_MEMBER) {
+      if (keyword == '実稼働日数') {
+        return i;
+      }
+    }
+  }
+  return -1;
+}
+
+// 引数として渡された文字列が製番かどうかを判定する
+function isSeibanString(s) {
+  let reg = /[A-Z]{2}[0-9]{2}[A-Z][0-9]{3}/gi;
+  return reg.test(s)
+}
+
+// 数値かどうかを判定する
+function isNumber(v) {
+  return ((typeof v === 'number') && (isFinite(v)));
+}
+
+// from <= 日付 < to とする 
+function calcWorkRate2(name, from, to, calctype, data, workdays, workhours) {
+  
+  // オプション引数の初期値の設定
+  if (workdays == null) {
+    workdays = WORKDAYS_OF_A_WEEK_DEFAULT;
+  }
+  if (workhours == null) {
+    workhours = HOURS_OF_A_DAY_DEFAULT;
+  }
+
+  // 実稼働日数が0の場合は稼働率の計算ができない（ゼロ割となり無限大に発散する）ので0を返す
+  if (workdays == 0) {
+    return 0;
+  }
+
+  // 役務算出シートのデータが入力されている範囲の全データを取得
+//  var sheet = SpreadsheetApp.getActive().getSheetByName('役務算出');
+//  var data = sheet.getDataRange().getValues();
+  
+  // nameのスタッフのfrom toの期間の作業時間の合計を取得
+  var sum_hour = 0;
+  var seibans = "";
+  // dataには対象シートの上の行から順番に配列として格納されているので、順ループの場合はシートの上の行から順番に取得する処理になる
+  for (var i = ROW_DATA_START; i < data.length; i++) {
+    // from日付より前の日付なら期間外なのでループの最初に戻って次の行へ
+    if (data[i][COL_DATE] < from) {
+      continue;
+    }
+    // to日付を含む先の日付まで到達したらこれ以降は全て期間外なのでループを抜け余分な処理をしない（WDRからコピペしたままの役務算出シートは日付で昇順であるため）
+    if (to <= data[i][COL_DATE]) {
+      break;
+    }
+    // 製番実績集計を得たいのではなく
+    if (calctype != CALC_TYPE_SEIBAN_TOTAL) {
+      // 対象者でなければループの最初に戻って次の行へ
+      if (data[i][COL_NAME] != name) {
+        continue;
+      }
+    }
+    
+    // calctypeによって作業時間の合計を得る
+    if (calctype == CALC_TYPE_ACTRATE) {
+      // 稼働率を得たい場合は製番有りの作業だけを加算
+      sum_hour += getActHour(data[i][COL_SEIBAN], data[i][COL_HOUR]);
+    } else if (calctype == CALC_TYPE_INPUTRATE) {
+      // 入力率を得たい場合は全ての作業を加算
+      sum_hour += data[i][COL_HOUR];
+    } else if (calctype == CALC_TYPE_ACTSEIBAN) {
+      // 実績製番リストを得たい場合は重複無しの製番リストを編集
+      seibans = getActSeiban(data[i][COL_SEIBAN], seibans, data[i][COL_HOUR]);
+    } else if (calctype == CALC_TYPE_SEIBAN_TOTAL) {
+      // 製番毎の実績時間を得たい場合は対象製番の時間を加算（この計算タイプの場合、nameには製番が入っている）
+      sum_hour += getTargetSeibanHour(name, data[i][COL_SEIBAN], data[i][COL_HOUR]);
+    } else {
+      // undefined (Do nothing)
+    }
+  }
+  
+  // 長期休暇や祝日等で週の稼働日が5日に満たない場合の稼動率や入力率を100%にするための係数
+  var coefficient = workdays / WORKDAYS_OF_A_WEEK_DEFAULT;
+
+  if (calctype == CALC_TYPE_ACTSEIBAN) {
+    // 末尾の改行を削除
+    seibans = seibans.replace(/\n+$/g,'');
+    // 実績製番リストを返す
+    return seibans;
+  } else if (calctype == CALC_TYPE_SEIBAN_TOTAL) {
+    // 対象製番の合計時間を返す
+    return sum_hour;
+  } else {
+    // 百分率を計算して返す（1週間単位固定とする）
+    var hoursofaweek = workhours * WORKDAYS_OF_A_WEEK_DEFAULT;
+    var rete = sum_hour / hoursofaweek / coefficient;
+    return rete;
+  }
 }
 
 function _reCalc() {
