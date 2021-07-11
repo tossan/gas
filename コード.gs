@@ -11,7 +11,9 @@ let SHEET_TYPE_UNDEF = -1;
 
 let IDX_KEYWORD = 2;
 let COL_PROJECT_SEIBAN = 3;
-let COL_DATE_START = 5;
+let COL_MEMBER_NAME = 3;
+let COL_DATE_START_PROJECT = 5;
+let COL_DATE_START_MEMBER = 4;
 
 function execCalc() {
   // ITDC->役務算出集計コマンドが実行されたシートを判定
@@ -42,8 +44,19 @@ function execCalc() {
       }
     }
   } else if (sheet_type == SHEET_TYPE_MEMBER) {
-    Browser.msgBox("実装中・・・。");
-    return;
+    if (isMemberNameCell(activeSheet, activeCellRow, activeCellColumn)) {
+      let ret = Browser.msgBox("メンバーの実績を集計します\\nはい（Yes）：" + activeCellValue + " だけを集計する\\nいいえ（No）：全てのメンバーを集計する", Browser.Buttons.YES_NO_CANCEL);
+      if (ret == "yes") {
+        targetRow = activeCellRow;
+      } else if (ret == "cancel") {
+        return;
+      }
+    } else {
+      let ret = Browser.msgBox("メンバー毎の実績を集計します", Browser.Buttons.OK_CANCEL);
+      if (ret == "cancel") {
+        return;
+      }
+    }
   } else {
     Browser.msgBox("集計対象シートではありません。");
     return;
@@ -53,25 +66,59 @@ function execCalc() {
   let ekimuData = ekimuSheet.getDataRange().getValues();
   let rowKeyword = getKeywordRowBySheetType(sheet_type, activeSheet);
   for (let cntRow = 1; cntRow < activeSheet.getLastRow(); cntRow++) {
-    let seiban = activeSheet.getRange(cntRow, COL_PROJECT_SEIBAN).getValue();
-    if (isSeibanString(seiban)) {
-      if (targetRow > 0 && targetRow != cntRow) {
-        continue;
-      }
-      for (let cntCol = COL_DATE_START; activeSheet.getLastColumn(); cntCol++) {
-        let rowDate = rowKeyword;
-        let dateFrom = activeSheet.getRange(rowDate, cntCol).getValue();
-        let dateTo = activeSheet.getRange(rowDate, cntCol + 1).getValue();
-        if (dateTo.toString().trim().length <= 0) {
+    if (sheet_type == SHEET_TYPE_PROJECT) {
+      let seiban = activeSheet.getRange(cntRow, COL_PROJECT_SEIBAN).getValue();
+      if (isSeibanString(seiban)) {
+        if (targetRow > 0 && targetRow != cntRow) {
+          continue;
+        }
+        for (let cntCol = COL_DATE_START_PROJECT; activeSheet.getLastColumn(); cntCol++) {
+          let rowDate = rowKeyword;
+          let dateFrom = activeSheet.getRange(rowDate, cntCol).getValue();
+          let dateTo = activeSheet.getRange(rowDate, cntCol + 1).getValue();
+          if (dateTo.toString().trim().length <= 0) {
+            break;
+          }
+          let value = calcWorkRate2(seiban, dateFrom, dateTo, CALC_TYPE_SEIBAN_TOTAL, ekimuData);
+          value = isNumber(value) ? value : 0;
+          activeSheet.getRange(cntRow, cntCol).setValue(value);
+        }
+        SpreadsheetApp.getActiveSpreadsheet().toast(cntRow + "行目 " + seiban + " 集計済", "進捗表示", 1.5);
+        if (targetRow > 0) {
           break;
         }
-        let value = calcWorkRate2(seiban, dateFrom, dateTo, CALC_TYPE_SEIBAN_TOTAL, ekimuData);
-        value = isNumber(value) ? value : 0;
-        activeSheet.getRange(cntRow, cntCol).setValue(value);
       }
-      SpreadsheetApp.getActiveSpreadsheet().toast(cntRow + "行目 " + seiban + " 集計済", "進捗表示", 1.5);
-      if (targetRow > 0) {
-        break;
+    } else if (sheet_type == SHEET_TYPE_MEMBER) {
+      let memberName = activeSheet.getRange(cntRow, COL_MEMBER_NAME).getValue();
+      if (isMemberNameCell(activeSheet, cntRow, COL_MEMBER_NAME)) {
+        if (targetRow > 0 && targetRow != cntRow) {
+          continue;
+        }
+        for (let cntCol = COL_DATE_START_MEMBER; activeSheet.getLastColumn(); cntCol++) {
+          let rowDate = rowKeyword + 2;
+          let dateFrom = activeSheet.getRange(rowDate, cntCol).getValue();
+          let dateTo = activeSheet.getRange(rowDate, cntCol + 1).getValue();
+          if (dateTo.toString().trim().length <= 0) {
+            break;
+          }
+          let rowWorkdays = rowKeyword;
+          let workdays = activeSheet.getRange(rowWorkdays, cntCol).getValue();
+          // 稼動実績
+          let v1 = calcWorkRate2(memberName, dateFrom, dateTo, CALC_TYPE_ACTRATE, ekimuData, workdays);
+          v1 = isNumber(v1) ? v1 : 0;
+          activeSheet.getRange(cntRow + 3, cntCol).setValue(v1);
+          // 製番毎実績
+          let v2 = calcWorkRate2(memberName, dateFrom, dateTo, CALC_TYPE_ACTSEIBAN, ekimuData);
+          activeSheet.getRange(cntRow + 4, cntCol).setValue(v2);
+          // 入力率
+          let v3 = calcWorkRate2(memberName, dateFrom, dateTo, CALC_TYPE_INPUTRATE, ekimuData, workdays);
+          v3 = isNumber(v3) ? v3 : 0;
+          activeSheet.getRange(cntRow + 5, cntCol).setValue(v3);
+        }
+        SpreadsheetApp.getActiveSpreadsheet().toast(memberName + " 集計済", "進捗表示", 1.5);
+        if (targetRow > 0) {
+          break;
+        }
       }
     }
   }
@@ -112,6 +159,18 @@ function getKeywordRowBySheetType(sheetType, activeSheet) {
 function isSeibanString(s) {
   let reg = /[A-Z]{2}[0-9]{2}[A-Z][0-9]{3}/gi;
   return reg.test(s)
+}
+
+// 
+function isMemberNameCell(sht, r, c) {
+  let v1 = sht.getRange(r + 1, c).getValue();
+  let v2 = sht.getRange(r + 2, c).getValue();
+  let v3 = sht.getRange(r + 3, c).getValue();
+  if (v1 == "保守案件" && v2 == "稼動予定" && v3 == "稼動実績") {
+    return true;
+  } else {
+    return false;
+  }
 }
 
 // 数値かどうかを判定する
