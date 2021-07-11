@@ -20,14 +20,36 @@ function execCalc() {
     Browser.msgBox("プロジェクトシートかメンバーシートを選択してから実行してください。");
     return;
   }
+  // アクティブシートとアクティブセルの取得
+  let activeSheet = SpreadsheetApp.getActiveSheet();
+  let activeCell = activeSheet.getCurrentCell();
+  let activeCellValue = activeCell.getValue().toString().trim();
+  let activeCellRow = activeCell.getRow();
+  let activeCellColumn = activeCell.getColumn();
+  let targetRow = 0;
+  if (isSeibanString(activeCellValue) && activeCellColumn == COL_PROJECT_SEIBAN) {
+    let ret = Browser.msgBox("製番の実績を集計します\\nはい（Yes）：" + activeCellRow + "行目の " + activeCellValue + " だけを集計する\\nいいえ（No）：全ての製番を集計する", Browser.Buttons.YES_NO_CANCEL);
+    if (ret == "yes") {
+      targetRow = activeCellRow;
+    } else if (ret == "cancel") {
+      return;
+    }
+  } else {
+    let ret = Browser.msgBox("製番毎の実績を集計します", Browser.Buttons.OK_CANCEL);
+    if (ret == "cancel") {
+      return;
+    }
+  }
   // 役務算出シートのデータが入力されている範囲の全データを取得
   let ekimuSheet = SpreadsheetApp.getActive().getSheetByName('役務算出');
   let ekimuData = ekimuSheet.getDataRange().getValues();
-  let activeSheet = SpreadsheetApp.getActiveSheet();
   let rowKeyword = getKeywordRowBySheetType(sheet_type, activeSheet);
   for (let cntRow = 1; cntRow < activeSheet.getLastRow(); cntRow++) {
     let seiban = activeSheet.getRange(cntRow, COL_PROJECT_SEIBAN).getValue();
     if (isSeibanString(seiban)) {
+      if (targetRow > 0 && targetRow != cntRow) {
+        continue;
+      }
       for (let cntCol = COL_DATE_START; activeSheet.getLastColumn(); cntCol++) {
         let rowDate = rowKeyword;
         let dateFrom = activeSheet.getRange(rowDate, cntCol).getValue();
@@ -39,10 +61,13 @@ function execCalc() {
         value = isNumber(value) ? value : 0;
         activeSheet.getRange(cntRow, cntCol).setValue(value);
       }
-      SpreadsheetApp.getActiveSpreadsheet().toast(cntRow + "行目 " + seiban + " 集計済", "進捗表示", 1);
+      SpreadsheetApp.getActiveSpreadsheet().toast(cntRow + "行目 " + seiban + " 集計済", "進捗表示", 1.5);
+      if (targetRow > 0) {
+        break;
+      }
     }
   }
-  SpreadsheetApp.getActiveSpreadsheet().toast("集計完了", "進捗表示", 1);
+  SpreadsheetApp.getActiveSpreadsheet().toast("集計完了", "進捗表示", 1.5);
 }
 
 function getSheetType(sheetName) {
