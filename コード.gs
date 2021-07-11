@@ -27,18 +27,26 @@ function execCalc() {
   let activeCellRow = activeCell.getRow();
   let activeCellColumn = activeCell.getColumn();
   let targetRow = 0;
-  if (isSeibanString(activeCellValue) && activeCellColumn == COL_PROJECT_SEIBAN) {
-    let ret = Browser.msgBox("製番の実績を集計します\\nはい（Yes）：" + activeCellRow + "行目の " + activeCellValue + " だけを集計する\\nいいえ（No）：全ての製番を集計する", Browser.Buttons.YES_NO_CANCEL);
-    if (ret == "yes") {
-      targetRow = activeCellRow;
-    } else if (ret == "cancel") {
-      return;
+  if (sheet_type == SHEET_TYPE_PROJECT) {
+    if (isSeibanString(activeCellValue) && activeCellColumn == COL_PROJECT_SEIBAN) {
+      let ret = Browser.msgBox("製番の実績を集計します\\nはい（Yes）：" + activeCellRow + "行目の " + activeCellValue + " だけを集計する\\nいいえ（No）：全ての製番を集計する", Browser.Buttons.YES_NO_CANCEL);
+      if (ret == "yes") {
+        targetRow = activeCellRow;
+      } else if (ret == "cancel") {
+        return;
+      }
+    } else {
+      let ret = Browser.msgBox("製番毎の実績を集計します", Browser.Buttons.OK_CANCEL);
+      if (ret == "cancel") {
+        return;
+      }
     }
+  } else if (sheet_type == SHEET_TYPE_MEMBER) {
+    Browser.msgBox("実装中・・・。");
+    return;
   } else {
-    let ret = Browser.msgBox("製番毎の実績を集計します", Browser.Buttons.OK_CANCEL);
-    if (ret == "cancel") {
-      return;
-    }
+    Browser.msgBox("集計対象シートではありません。");
+    return;
   }
   // 役務算出シートのデータが入力されている範囲の全データを取得
   let ekimuSheet = SpreadsheetApp.getActive().getSheetByName('役務算出');
