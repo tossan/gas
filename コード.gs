@@ -33,34 +33,34 @@ function onOpen() {
 }
 
 // 研究/開発/教育製番及び汎用製番
-var RANDD_GENERAL_SEIBAN = ['TD16A002', 'TD16A006', 'TD16G002', 'TD16G005', 'TD17A002', 'TD17A005', 'TD17G002', 'TD17G005', 'TD18A002', 'TD18A005', 'TD18G002', 'TD18G005', 'TD19A002', 'TD19A005', 'TD19G002', 'TD19G005', 'TD20A002', 'TD20A005', 'TD20G002', 'TD20G005', 'TD21A002', 'TD21A005', 'TD21G002', 'TD21G005'];
+const RANDD_GENERAL_SEIBAN = ['TD16A002', 'TD16A006', 'TD16G002', 'TD16G005', 'TD17A002', 'TD17A005', 'TD17G002', 'TD17G005', 'TD18A002', 'TD18A005', 'TD18G002', 'TD18G005', 'TD19A002', 'TD19A005', 'TD19G002', 'TD19G005', 'TD20A002', 'TD20A005', 'TD20G002', 'TD20G005', 'TD21A002', 'TD21A005', 'TD21G002', 'TD21G005'];
 
-var WORKDAYS_OF_A_WEEK_DEFAULT = 5;
-var HOURS_OF_A_DAY_DEFAULT = 8;
+const WORKDAYS_OF_A_WEEK_DEFAULT = 5;
+const HOURS_OF_A_DAY_DEFAULT = 8;
 
-var CALC_TYPE_ACTRATE = 1;
-var CALC_TYPE_INPUTRATE = 2;
-var CALC_TYPE_ACTSEIBAN = 3;
-var CALC_TYPE_SEIBAN_TOTAL = 4;
+const CALC_TYPE_ACTRATE = 1;
+const CALC_TYPE_INPUTRATE = 2;
+const CALC_TYPE_ACTSEIBAN = 3;
+const CALC_TYPE_SEIBAN_TOTAL = 4;
 
-let SHEET_TYPE_PROJECT = 1;
-let SHEET_TYPE_MEMBER = 2;
-let SHEET_TYPE_UNDEF = -1;
+const SHEET_TYPE_PROJECT = 1;
+const SHEET_TYPE_MEMBER = 2;
+const SHEET_TYPE_UNDEF = -1;
 
 // 役務算出シート
-var COL_SEIBAN = 2;
-var COL_DATE = 3;
-var COL_NAME = 5;
+const COL_SEIBAN = 2;
+const COL_DATE = 3;
+const COL_NAME = 5;
 // var COL_HOUR = 7;  // ～37期下期
-var COL_HOUR = 9; // 38期上期
-var ROW_DATA_START = 2;
+const COL_HOUR = 9; // 38期上期
+const ROW_DATA_START = 2;
 
 // プロジェクトシート、メンバーシート
-let IDX_KEYWORD = 2;
-let COL_PROJECT_SEIBAN = 3;
-let COL_MEMBER_NAME = 3;
-let COL_DATE_START_PROJECT = 5;
-let COL_DATE_START_MEMBER = 4;
+const IDX_KEYWORD = 2;
+const COL_PROJECT_SEIBAN = 3;
+const COL_MEMBER_NAME = 3;
+const COL_DATE_START_PROJECT = 5;
+const COL_DATE_START_MEMBER = 4;
 
 function execCalc() {
   // ITDC->役務算出集計コマンドが実行されたシートを判定
@@ -329,8 +329,8 @@ function getActSeiban(seiban, seibans, hour) {
       for (var i = 0; i < ary_seiban.length; i++) {
         var s = ary_seiban[i];
         if (s.indexOf(seiban) != -1) {
-          var IDX_SEIBAN = 0;
-          var IDX_HOUR = 1;
+          const IDX_SEIBAN = 0;
+          const IDX_HOUR = 1;
           var ary_tmp = s.split(":");
           ary_tmp[IDX_HOUR] = parseFloat(ary_tmp[IDX_HOUR]) + hour;
           ary_seiban[i] = ary_tmp[IDX_SEIBAN] + ":" + ary_tmp[IDX_HOUR];
