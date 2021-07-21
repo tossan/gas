@@ -161,7 +161,7 @@ function isSeibanString(s) {
   return reg.test(s)
 }
 
-// 
+// 引数として渡されたシートのセルがメンバー名のセルかどうかを判定する
 function isMemberNameCell(sht, r, c) {
   let v1 = sht.getRange(r + 1, c).getValue();
   let v2 = sht.getRange(r + 2, c).getValue();
