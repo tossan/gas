@@ -38,7 +38,7 @@ function execCalc() {
         return;
       }
     } else {
-      let ret = Browser.msgBox("製番毎の実績を集計します", Browser.Buttons.OK_CANCEL);
+      let ret = Browser.msgBox("全ての製番の実績を集計します", Browser.Buttons.OK_CANCEL);
       if (ret == "cancel") {
         return;
       }
@@ -52,7 +52,7 @@ function execCalc() {
         return;
       }
     } else {
-      let ret = Browser.msgBox("メンバー毎の実績を集計します", Browser.Buttons.OK_CANCEL);
+      let ret = Browser.msgBox("全てのメンバーの実績を集計します", Browser.Buttons.OK_CANCEL);
       if (ret == "cancel") {
         return;
       }
@@ -282,7 +282,8 @@ function _test2() {
 var COL_SEIBAN = 2;
 var COL_DATE = 3;
 var COL_NAME = 5;
-var COL_HOUR = 7;
+// var COL_HOUR = 7;  // ～37期下期
+var COL_HOUR = 9; // 38期上期
 var ROW_DATA_START = 2;
 
 var WORKDAYS_OF_A_WEEK_DEFAULT = 5;
